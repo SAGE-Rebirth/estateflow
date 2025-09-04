@@ -15,16 +15,16 @@ config.set_option("server.fileWatcherType", "none")
 # Rest of your imports
 from langchain_community.vectorstores import FAISS
 try:
-    from langchain_huggingface import HuggingFaceEmbeddings, HuggingFaceEndpoint
+    from langchain_huggingface import HuggingFaceEmbeddings, HuggingFaceEndpoint, ChatHuggingFace
 except ImportError:
     HuggingFaceEmbeddings = None
     HuggingFaceEndpoint = None
+    ChatHuggingFace = None
 from langchain.chains import ConversationalRetrievalChain
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from huggingface_hub import login
 from PyPDF2 import PdfReader
 from docx import Document
-
 
 # Load environment variables
 load_dotenv()
@@ -80,7 +80,7 @@ if uploaded_files:
         splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
         texts = splitter.split_text(raw_text)
         
-        if HuggingFaceEmbeddings is None or HuggingFaceEndpoint is None:
+        if HuggingFaceEmbeddings is None or HuggingFaceEndpoint is None or ChatHuggingFace is None:
             st.error("Please install langchain-huggingface: pip install -U langchain-huggingface")
             st.stop()
             
@@ -93,13 +93,17 @@ if uploaded_files:
             
         retriever = vectorstore.as_retriever()
         
-        # SOLUTION 1: Use a different model that supports text-generation
-        llm = HuggingFaceEndpoint(
+        llm_endpoint = HuggingFaceEndpoint(
             repo_id="meta-llama/Llama-3.1-8B-Instruct",
+            provider="auto",
             max_new_tokens=512,
             do_sample=False,
             huggingfacehub_api_token=HUGGINGFACEHUB_API_TOKEN
         )
+        
+        # Wrap with ChatHuggingFace to handle conversational aspects
+        llm = ChatHuggingFace(llm=llm_endpoint)
+        
         qa_chain = ConversationalRetrievalChain.from_llm(
             llm=llm,
             retriever=retriever,
