@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+@theme {
+  --color-stone: #f4f6f3;
+  --color-paper: #ffffff;
+  --color-ink: #1c2724;
+  --color-ink-soft: #4d5a56;
+  --color-ink-faint: #7b8783;
+  --color-rule: #d8ddd8;
+  --color-registry: #1f6a50;
+  --color-registry-deep: #154d3a;
+  --color-registry-tint: #e3efe9;
+  --color-marigold: #d69a22;
+  --color-marigold-tint: #fbf0d9;
+  --color-brick: #b4432f;
+  --color-brick-tint: #f7e4df;
+
+  --font-display: var(--font-familjen), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-public), ui-sans-serif, system-ui, sans-serif;
+}
+
+html {
+  font-family: var(--font-sans);
+  color: var(--color-ink);
+  background: var(--color-stone);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-registry);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Suggestion lists stay, but without Chrome's drop-down arrow inside the field. */
+.no-datalist-arrow::-webkit-calendar-picker-indicator {
+  display: none !important;
+}
+
+/* FullCalendar, tuned to the palette */
+.fc {
+  --fc-border-color: var(--color-rule);
+  --fc-today-bg-color: var(--color-marigold-tint);
+  --fc-now-indicator-color: var(--color-brick);
+  --fc-button-bg-color: var(--color-paper);
+  --fc-button-text-color: var(--color-ink);
+  --fc-button-border-color: var(--color-rule);
+  --fc-button-hover-bg-color: var(--color-registry-tint);
+  --fc-button-hover-border-color: var(--color-rule);
+  --fc-button-active-bg-color: var(--color-registry);
+  --fc-button-active-border-color: var(--color-registry);
+  font-size: 0.875rem;
+}
+.fc .fc-button {
+  text-transform: none;
+  font-weight: 500;
+  box-shadow: none !important;
+}
+.fc .fc-button-active {
+  color: white !important;
+}
+.fc .fc-toolbar-title {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+}
+.fc-event {
+  cursor: pointer;
+}

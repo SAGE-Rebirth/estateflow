@@ -14,8 +14,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
@@ -49,6 +49,7 @@ coverage.xml
 # dotenv
 .env
 .env.*
+!.env.example
 rag-env
 
 # VS Code
@@ -82,3 +83,17 @@ Desktop.ini
 poetry.lock
 Pipfile.lock
 requirements.lock
+
+# App
+.venv/
+node_modules/
+.next/
+uploads/
+*.tsbuildinfo
+next-env.d.ts
+
+# test uploads
+backend/tests/.uploads/
+
+# eval outputs
+backend/evals/results/

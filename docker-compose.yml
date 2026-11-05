@@ -1,0 +1,74 @@
+# Services for EstateFlow.
+#
+#   make services        -> redis                 (development against your Atlas cluster)
+#   make services-local  -> redis + mongo         (tests and offline development)
+#   make docker-up       -> redis + api + worker + web in containers (uses MONGO_URL from .env)
+#
+# Production data lives in MongoDB Atlas (MONGO_URL in .env); there is no other database.
+
+services:
+  redis:
+    # Job queue (arq), rate-limit counters and per-sender locks.
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    restart: unless-stopped
+
+  mongo:
+    # Atlas Local: single-node replica set (transactions) with Atlas Vector Search.
+    # Only for tests and offline development; point MONGO_URL at it to use it.
+    image: mongodb/mongodb-atlas-local:8.0
+    profiles: [local]
+    ports: ["27017:27017"]
+    volumes: [mongodata:/data/db, mongoconfig:/data/configdb]
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      retries: 20
+
+  api:
+    build: ./backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    env_file: ./.env
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    ports: ["8000:8000"]
+    volumes: [uploads:/app/uploads]
+    depends_on: [redis]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    profiles: [app]
+
+  worker:
+    # WhatsApp replies, document ingestion, reminders and the daily digest.
+    build: ./backend
+    command: arq app.workers.worker.WorkerSettings
+    env_file: ./.env
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    volumes: [uploads:/app/uploads]
+    depends_on: [redis]
+    restart: unless-stopped
+    profiles: [app]
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
+    environment:
+      API_INTERNAL_URL: http://api:8000/api/v1
+    ports: ["3000:3000"]
+    depends_on:
+      api: {condition: service_healthy}
+    restart: unless-stopped
+    profiles: [app]
+
+volumes:
+  mongodata:
+  mongoconfig:
+  # Listing photos (public) and brochures / buyer media (private), shared by api and worker.
+  uploads:
