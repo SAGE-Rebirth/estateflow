@@ -6,6 +6,7 @@ import { useState } from "react";
 import { api } from "@/lib/api";
 import { PROPERTY_TYPES } from "@/lib/format";
 import { useTeam } from "@/lib/hooks";
+import { FormAssist } from "./form-assist";
 import type { Property } from "@/lib/types";
 import { Button, ErrorText, Field, Input, Select, Textarea } from "./ui";
 
@@ -45,6 +46,7 @@ export function PropertyForm({ property }: { property?: Property }) {
         });
       }}
     >
+      <FormAssist paste="property" />
       <Field label="Title"><Input name="title" required minLength={3} defaultValue={property?.title} placeholder="3BHK lake-facing apartment" /></Field>
       <div className="grid gap-4 sm:grid-cols-3">
         <Field label="For">
@@ -77,7 +79,7 @@ export function PropertyForm({ property }: { property?: Property }) {
       </div>
       <Field label="Address" hint="Used as the meeting point for site visits"><Input name="address" defaultValue={property?.address ?? ""} /></Field>
       <Field label="Amenities" hint="Comma separated">
-        <Input value={amenities} onChange={(e) => setAmenities(e.target.value)} placeholder="gym, pool, covered parking" />
+        <Input name="amenities" value={amenities} onChange={(e) => setAmenities(e.target.value)} placeholder="gym, pool, covered parking" />
       </Field>
       <Field label="Description" hint="The assistant quotes from this. Include possession date, floor, facing, parking.">
         <Textarea name="description" rows={6} defaultValue={property?.description} />

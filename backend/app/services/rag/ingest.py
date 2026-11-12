@@ -15,12 +15,13 @@ from app.models import (
     DocumentStatus,
     Property,
 )
+from app.services.money import format_money
 from app.services.rag.embeddings import get_embedder
 from app.services.storage import resolve
 
 log = structlog.get_logger()
 
-EMBED_BATCH = 32
+EMBED_BATCH = 100
 
 
 def _load_text(path: Path, content_type: str | None) -> str:
@@ -49,7 +50,7 @@ def property_to_text(p: Property, currency: str) -> str:
         f"Status: {p.status.value.replace('_', ' ')}",
     ]
     if p.price is not None:
-        lines.append(f"Price: {currency} {p.price:,.0f}")
+        lines.append(f"Price: {format_money(p.price, currency)}")
     if p.area_sqft is not None:
         lines.append(f"Area: {p.area_sqft:,.0f} sq ft")
     if p.bedrooms is not None:

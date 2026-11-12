@@ -11,7 +11,8 @@ class PropertyBase(BaseModel):
     description: str = ""
     listing_type: ListingType
     property_type: PropertyType
-    status: PropertyStatus = PropertyStatus.draft
+    # Matches the dashboard form; `published` (default off) decides whether buyers see it.
+    status: PropertyStatus = PropertyStatus.available
     price: float | None = Field(default=None, ge=0)
     area_sqft: float | None = Field(default=None, ge=0)
     bedrooms: int | None = Field(default=None, ge=0, le=50)

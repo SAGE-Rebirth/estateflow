@@ -147,18 +147,34 @@ async def refresh(
     request: Request, response: Response, db: DbDep, body: RefreshIn | None = None
 ) -> SessionOut:
     token = (body.refresh_token if body else None) or request.cookies.get(REFRESH_COOKIE)
-    user = None
-    if token:
-        try:
-            payload = decode_token(token, "refresh")
-            user = await find_one(db, User, {"_id": str(payload["sub"])})
-            if user is not None and payload.get("ver", 0) != user.token_version:
-                user = None
-        except (jwt.PyJWTError, KeyError):
-            user = None
-    if user is None or not user.is_active:
+    user = await _token_user(db, token, "refresh")
+    if user is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Session expired")
     return _issue(request, response, user)
+
+
+async def _token_user(db: DbDep, token: str | None, kind: str) -> User | None:
+    """The active user a token belongs to, or None if it's missing, invalid or revoked."""
+    if not token:
+        return None
+    try:
+        payload = decode_token(token, kind)
+        user = await find_one(db, User, {"_id": str(payload["sub"])})
+    except (jwt.PyJWTError, KeyError):
+        return None
+    if user is None or not user.is_active or payload.get("ver", 0) != user.token_version:
+        return None
+    return user
+
+
+@router.get("/auth/session")
+async def session_status(request: Request, db: DbDep) -> dict[str, bool]:
+    """Whether this browser has a usable session. Always 200, so public pages can ask
+    without logging a 401 for every anonymous visitor. Read-only: rotates nothing."""
+    for cookie, kind in ((ACCESS_COOKIE, "access"), (REFRESH_COOKIE, "refresh")):
+        if await _token_user(db, request.cookies.get(cookie), kind):
+            return {"signed_in": True}
+    return {"signed_in": False}
 
 
 @router.post("/auth/logout", status_code=204)

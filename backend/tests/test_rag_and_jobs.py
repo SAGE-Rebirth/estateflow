@@ -101,7 +101,7 @@ async def test_listing_and_brochure_visibility_follow_status(db, tenant_with_age
     hits = await search_chunks(db, tenant.id, "villa with jacuzzi")
     assert {h.source for h in hits} == {"listing-PR-1001", "brochure.txt"}
     assert all(h.ref_code == "PR-1001" for h in hits)
-    assert any("INR 30,000,000" in h.content for h in hits)
+    assert any("₹3,00,00,000 (3 crore)" in h.content for h in hits)
 
     prop.status = PropertyStatus.sold
     await save(db, prop, "status")
@@ -260,10 +260,10 @@ def test_settings_read_user_env_names():
         COLLECTION_NAME="knowledge",
         SECRET_KEY="a" * 40,
         REFRESH_SECRET_KEY="b" * 40,
-        HUGGINGFACEHUB_API_TOKEN="hf_x",
+        GEMINI_API_KEY="g_x",
     )
     assert (s.mongo_url, s.db_name, s.chunks_collection) == ("mongodb+srv://x/", "crm", "knowledge")
-    assert (s.jwt_secret, s.jwt_refresh_secret, s.hf_token) == ("a" * 40, "b" * 40, "hf_x")
+    assert (s.jwt_secret, s.jwt_refresh_secret, s.gemini_api_key) == ("a" * 40, "b" * 40, "g_x")
 
 
 def test_production_refuses_default_secrets():
@@ -275,3 +275,13 @@ def test_production_refuses_default_secrets():
             encryption_key="",
             whatsapp_app_secret="",
         )
+
+
+def test_inr_prices_use_indian_grouping_and_words():
+    from app.services.money import format_money
+
+    assert format_money(950, "INR") == "₹950"
+    assert format_money(480_000, "INR") == "₹4,80,000 (4.8 lakh)"
+    assert format_money(9_500_000, "INR") == "₹95,00,000 (95 lakh)"
+    assert format_money(125_000_000, "INR") == "₹12,50,00,000 (12.5 crore)"
+    assert format_money(1_250_000, "USD") == "USD 1,250,000"

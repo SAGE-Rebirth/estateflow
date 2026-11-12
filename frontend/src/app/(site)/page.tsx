@@ -24,6 +24,8 @@ export default async function Home() {
     <main>
       <section className="border-b border-rule bg-stone">
         <div className="mx-auto max-w-7xl px-4 pb-14 pt-12 sm:px-6 sm:pb-20 sm:pt-16">
+          {/* The hero is a sentence-shaped search form; this names the page for screen readers and search. */}
+          <h1 className="sr-only">Homes for sale and rent, direct from sellers</h1>
           <HeroSearch places={places} />
           {summary.localities.length > 0 && (
             <div className="mt-10 flex flex-wrap items-center gap-2 text-sm">

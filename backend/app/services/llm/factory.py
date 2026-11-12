@@ -13,6 +13,10 @@ def get_chat_provider() -> ChatProvider:
         return AnthropicProvider(
             api_key=s.anthropic_api_key, model=s.anthropic_model, effort=s.anthropic_effort
         )
-    from app.services.llm.huggingface_provider import HuggingFaceProvider
+    from app.services.llm.gemini_provider import GeminiProvider
 
-    return HuggingFaceProvider(model=s.hf_llm_model, max_tokens=s.llm_max_tokens)
+    return GeminiProvider(
+        model=s.gemini_llm_model,
+        max_tokens=s.llm_max_tokens,
+        thinking_level=s.gemini_thinking_level,
+    )

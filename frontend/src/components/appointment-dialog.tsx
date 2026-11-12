@@ -7,6 +7,7 @@ import { dateTime, day, KIND_LABEL, time } from "@/lib/format";
 import { useMe, useTeam } from "@/lib/hooks";
 import type { AppointmentKind, Contact, Page, Property, Slot } from "@/lib/types";
 import { Button, ErrorText, Field, Input, Modal, Select, Textarea } from "./ui";
+import { FormAssist } from "./form-assist";
 
 export function AppointmentDialog({
   open, onClose, contactId, propertyId, defaultStart,
@@ -83,6 +84,7 @@ export function AppointmentDialog({
           save.mutate();
         }}
       >
+        <FormAssist />
         {!contactId && (
           <Field label="Client">
             <Input placeholder="Search by name or phone" value={search} onChange={(e) => setSearch(e.target.value)} />

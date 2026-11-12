@@ -27,7 +27,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the design and decisions.
 | API | FastAPI (async PyMongo), Python 3.12 |
 | Data | MongoDB Atlas (Vector Search for RAG, transactions for double-booking safety), Redis |
 | Jobs | arq workers: document ingestion, WhatsApp replies, reminders, daily digest |
-| AI | Hugging Face Inference Providers for everything: chat with tool calling (Qwen3 by default), embeddings (all-MiniLM-L6-v2), voice notes (Whisper), buyer photos (Qwen2.5-VL). Claude optional for chat. LangChain text splitters. |
+| AI | Google Gemini for everything: chat with tool calling (`gemini-3.6-flash`), embeddings (`gemini-embedding-2`, 768 dims), voice notes and buyer photos (`gemini-3.6-flash`). Claude optional for chat. LangChain text splitters. |
 | WhatsApp | Meta Cloud API, signed webhooks, media in and out, template fallback outside the 24h window |
 | Web | Next.js 15, Tailwind 4, TanStack Query, FullCalendar; httpOnly-cookie sessions |
 
@@ -42,8 +42,8 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the design and decisions.
 | [Docker Desktop](https://www.docker.com/products/docker-desktop/) | Runs Redis (and an optional local MongoDB) | download the app |
 | make | Runs the shortcuts in the `Makefile` | preinstalled on macOS (`xcode-select --install` if missing) |
 
-You also need a **MongoDB Atlas** cluster (the free tier works) and a **Hugging Face**
-account with Inference Providers credits (see [AI providers](#ai-providers)).
+You also need a **MongoDB Atlas** cluster (the free tier works) and a **Gemini API key**
+with billing or credits (see [AI providers](#ai-providers)).
 
 ### 2. Set up the project
 
@@ -68,7 +68,7 @@ docker-compose all read it. It is git-ignored, so secrets never get committed. R
 | `COLLECTION_NAME` | Collection for document chunks and embeddings, e.g. `chunks` |
 | `SECRET_KEY`, `REFRESH_SECRET_KEY` | Two different random strings: `openssl rand -hex 32` |
 | `ENCRYPTION_KEY` | `cd backend && uv run python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` |
-| `HUGGINGFACEHUB_API_TOKEN` | huggingface.co → Settings → Access Tokens (needs **Make calls to Inference Providers**) |
+| `GEMINI_API_KEY` | Google AI Studio → **Get API key** (https://aistudio.google.com/apikey) |
 | `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET` | See [Connect WhatsApp](#connect-whatsapp). Can wait until you connect a number. |
 
 In Atlas, also allow your IP under **Network Access**.
@@ -87,7 +87,7 @@ make dev          # API + worker + dashboard together; Ctrl+C stops all three
 - API docs: http://localhost:8000/docs
 
 The API creates collections and indexes (including the Atlas Vector Search index) on
-startup. `make seed-no-embed` loads the demo data without calling Hugging Face.
+startup. `make seed-no-embed` loads the demo data without calling Gemini.
 
 Prefer separate terminals? Run `make api`, `make worker` and `make web` instead of
 `make dev`. To run everything in containers instead, use `make docker-up` / `make docker-down`.
@@ -131,7 +131,9 @@ Run `make` on its own to list every command.
 |---|---|
 | `The DNS query name does not exist: _mongodb._tcp…` | The Atlas cluster is paused or the URL is wrong. Resume it in Atlas. If it was just resumed, your computer may have cached the old answer for a few minutes: wait, or run `sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder`. |
 | `ServerSelectionTimeoutError` | Your IP isn't allowed in Atlas → Network Access. |
-| Assistant replies "passing this to our team" for everything | Hugging Face returned an error. `402 Payment Required` means the account needs Inference Providers credits. Check the worker logs. |
+| Assistant replies "passing this to our team" for everything | Gemini returned an error. `402 … prepayment credits are depleted` means the AI Studio project needs credits or billing (https://ai.studio/projects). Check the worker logs. |
+| Gemini errors although your key in `.env` works | A `GEMINI_API_KEY` exported in your shell (e.g. in `~/.zshrc`) overrides `.env` for local runs. Remove it, or run `unset GEMINI_API_KEY` before `make dev`. Docker reads only `.env`. |
+| Documents stuck as **Failed**, or the assistant can't find listings | Embeddings failed (same cause as above), or the embedding model/size changed. Fix the cause, then `make reindex`. |
 | `make test` can't connect | Docker Desktop isn't running; start it and retry. |
 | Port 8000 or 3000 already in use | Another copy is running. Stop it, or `lsof -i :8000` to find it. |
 
@@ -152,22 +154,49 @@ Local testing needs a public URL for the webhook (e.g. `cloudflared tunnel --url
 
 ## AI providers
 
-Everything runs on Hugging Face Inference Providers with `HUGGINGFACEHUB_API_TOKEN`.
-Hosted inference is billed per use: add pre-paid credits (Billing → **Add Credits**) or
-subscribe to PRO. Without credits, calls fail with `402 Payment Required`. The "Inference
-Usage" figure on the billing page is a usage meter, not credit.
+Everything runs on Google Gemini with `GEMINI_API_KEY`. Usage is billed to the key's AI
+Studio project; when its prepaid credits run out, calls fail with `402 RESOURCE_EXHAUSTED`
+and the assistant hands every chat to your team until you top up.
 
 | Job | Setting | Default |
 |---|---|---|
-| Chat + tool calling | `HF_LLM_MODEL` | `Qwen/Qwen3-235B-A22B-Instruct-2507` (alternatives: `openai/gpt-oss-120b`, `meta-llama/Llama-3.3-70B-Instruct`) |
-| Embeddings | `HF_EMBEDDING_MODEL`, `EMBEDDING_DIM` | `sentence-transformers/all-MiniLM-L6-v2`, 384 |
-| Voice notes | `HF_ASR_MODEL` | `openai/whisper-large-v3` |
-| Buyer photos | `HF_VISION_MODEL` | `Qwen/Qwen2.5-VL-72B-Instruct` |
+| Chat + tool calling | `GEMINI_LLM_MODEL`, `GEMINI_THINKING_LEVEL` | `gemini-3.6-flash`, `low` |
+| Embeddings | `GEMINI_EMBEDDING_MODEL`, `EMBEDDING_DIM` | `gemini-embedding-2`, 768 |
+| Voice notes and buyer photos | `GEMINI_MEDIA_MODEL` | `gemini-3.6-flash` |
 
-Changing the embedding model or dimension needs a re-index: delete the vector index and
-chunks, then re-save listings / retry documents.
+Changing the embedding model or dimension needs `make reindex`: it updates the Atlas
+vector index to the new size and re-embeds every listing and document.
 
 `LLM_PROVIDER=anthropic` switches only the chat model to Claude (`claude-opus-5-5`).
+
+## Voice fill and smart paste
+
+Every dashboard form, plus sign-up and the public booking page, has **Fill by voice**.
+It starts at the field the cursor is in (or the first empty one), types what you say, and
+moves to the next field. Prices, areas and counts understand "95 lakh", "1.2 crore" and
+"twelve hundred". Dropdowns match the option you name, and checkboxes take yes or no.
+Description boxes keep listening until you say "next". Spoken commands: *next*, *back*,
+*clear*, *submit form*, *stop* (or Esc). One-line forms such as notes, follow-ups and
+WhatsApp replies get a mic button instead.
+
+Voice works in **English and Hindi**: switch with the EN / हिंदी toggle, which each device
+remembers. Hindi understands "डेढ़ करोड़", "साढ़े तीन", हाँ/नहीं, Hindi option names
+(किराया → Rent, फ्लैट → Apartment) and the commands अगला, पीछे, साफ़ करो, जमा करो, रुको. City
+names said in Hindi are typed in English so search keeps working. Dictate emails in English.
+Voice runs on the browser's own speech recognition (Chrome, Edge, Safari). It's free and
+doesn't use your Gemini quota. In Firefox the mic button is hidden.
+
+**Smart paste:** paste a block of text (a WhatsApp forward, a portal listing, an email)
+anywhere in **Add property** or **Add lead**, and the fields it mentions are filled and
+highlighted, with Undo. The text can be English, Hindi or Hinglish. Short pastes behave normally, and a paste into a text box still
+lands there. It uses one `GEMINI_EXTRACT_MODEL` call per paste (default
+`gemini-3.5-flash-lite`, about 2 s). Emails and phone numbers are always taken verbatim
+from the text, never retyped by the model.
+
+## Running costs
+
+Monthly cost estimates for a pilot, a growing agency and a marketplace (hosting, Gemini,
+WhatsApp), what each action costs, and ways to cut the bill: [docs/COSTS.md](docs/COSTS.md).
 
 ## Evaluating the assistant
 
@@ -191,7 +220,7 @@ make test      # starts local MongoDB + Redis in Docker, then runs pytest
 
 Tests run against local Atlas (real transactions and `$vectorSearch`) and Redis, using the
 `estateflow_test` database, a scripted LLM, a fake WhatsApp client and a deterministic
-embedder. They never touch the database or Hugging Face account in your `.env`.
+embedder. They never touch the database or Gemini key in your `.env`.
 
 ## Layout
 
@@ -200,9 +229,9 @@ backend/
   app/api/routes/        REST endpoints (auth, properties, CRM, scheduling, dashboard, public, webhooks)
   app/models.py          MongoDB document models; every tenant-owned document has tenant_id
   app/services/agent/    WhatsApp assistant: prompts + tenant-scoped tools
-  app/services/llm/      Provider interface: Hugging Face (default) and Claude
+  app/services/llm/      Provider interface: Gemini (default) and Claude
   app/services/rag/      Ingestion (PDF/DOCX/TXT → chunks → Atlas Vector Search) and retrieval
-  app/services/hf.py     Speech-to-text and image description
+  app/services/gemini.py Gemini client, speech-to-text and image description
   app/services/          scheduling, inbound WhatsApp handling, notifications, client messages
   app/workers/           arq jobs and cron
   evals/                 Assistant evaluation scenarios and runner

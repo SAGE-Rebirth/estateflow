@@ -214,7 +214,13 @@ async def listing_detail(slug: str, ref_code: str, db: DbDep) -> MarketListingDe
         await find_one(
             db,
             Property,
-            {"tenant_id": seller.id, "ref_code": ref_code.upper(), "published": True},
+            {
+                "tenant_id": seller.id,
+                "ref_code": ref_code.upper(),
+                "published": True,
+                # Sold/rented pages stay up for shared links; drafts are never public.
+                "status": {"$ne": PropertyStatus.draft},
+            },
         )
         if seller
         else None

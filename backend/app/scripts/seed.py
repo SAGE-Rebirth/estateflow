@@ -1,7 +1,7 @@
 """Demo data: `uv run python -m app.scripts.seed` → log in as demo@estateflow.dev / demo12345.
 
 Writes to the database in MONGO_URL / DB_NAME. Listing embeddings use the configured
-Hugging Face model; pass --no-embed to skip them (e.g. while HF credits are unavailable).
+Gemini model; pass --no-embed to skip them (e.g. while no GEMINI_API_KEY is set).
 """
 
 import asyncio
@@ -426,8 +426,12 @@ async def main(embed: bool = True) -> None:
         ),
     )
     if embed:
-        for p in props:
-            await index_property(db, p.id, tenant.currency)
+        try:
+            for p in props:
+                await index_property(db, p.id, tenant.currency)
+        except Exception as exc:  # data is in; only the assistant's search index is missing
+            print(f"Embedding failed ({str(exc)[:160]}).")
+            print("Demo data is saved. Run `make reindex` once Gemini is reachable.")
     print("Seeded. Log in as demo@estateflow.dev / demo12345")
 
 

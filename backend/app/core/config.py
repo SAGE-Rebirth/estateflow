@@ -64,21 +64,22 @@ class Settings(BaseSettings):
     whatsapp_graph_base: str = "https://graph.facebook.com"
     max_inbound_media_mb: int = 16
 
-    # Hugging Face (LLM, embeddings, speech-to-text, image description)
-    hf_token: str | None = Field(
-        None, validation_alias=AliasChoices("HUGGINGFACEHUB_API_TOKEN", "HF_TOKEN")
+    # Google Gemini (chat, embeddings, speech-to-text, image description)
+    gemini_api_key: str | None = Field(
+        None, validation_alias=AliasChoices("GEMINI_API_KEY", "GOOGLE_API_KEY")
     )
-    # Inference Providers routing: "auto" picks the first available provider for the model.
-    hf_provider: str = "auto"
-    hf_llm_model: str = "Qwen/Qwen3-235B-A22B-Instruct-2507"
-    hf_embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
-    hf_embedding_provider: str = "hf-inference"
-    hf_vision_model: str = "Qwen/Qwen2.5-VL-72B-Instruct"
-    hf_asr_model: str = "openai/whisper-large-v3"
-    hf_timeout_seconds: float = 60
+    gemini_llm_model: str = "gemini-3.6-flash"
+    gemini_media_model: str = "gemini-3.6-flash"
+    gemini_embedding_model: str = "gemini-embedding-2"
+    # Smart paste (form filling from pasted text): a fast model keeps it near-instant.
+    gemini_extract_model: str = "gemini-3.5-flash-lite"
+    # "minimal" | "low" | "medium" | "high": deeper thinking is slower and costs more.
+    gemini_thinking_level: str = "low"
+    # Per attempt. A buyer is waiting on WhatsApp, so fail over to a human quickly.
+    gemini_timeout_seconds: float = 30
 
-    # LLM choice: Hugging Face by default; Claude is available as an alternative.
-    llm_provider: Literal["huggingface", "anthropic"] = "huggingface"
+    # LLM choice: Gemini by default; Claude is available as an alternative.
+    llm_provider: Literal["gemini", "anthropic"] = "gemini"
     llm_max_tokens: int = 1024
     anthropic_api_key: str | None = None
     anthropic_model: str = "claude-opus-5-5"
@@ -86,11 +87,12 @@ class Settings(BaseSettings):
     llm_max_tool_iterations: int = 6
     agent_history_turns: int = 20
 
-    # Media understanding (set to false to skip the extra HF calls)
+    # Media understanding (set to false to skip the extra Gemini calls)
     transcribe_voice_notes: bool = True
     describe_images: bool = True
 
-    embedding_dim: int = 384
+    # gemini-embedding-2 supports 128–3072; changing it needs `make reindex`.
+    embedding_dim: int = 768
     chunk_size: int = 900
     chunk_overlap: int = 150
 

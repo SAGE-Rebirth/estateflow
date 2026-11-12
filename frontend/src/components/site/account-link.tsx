@@ -8,9 +8,11 @@ import { API_URL } from "@/lib/api";
 export function AccountLink() {
   const [signedIn, setSignedIn] = useState(false);
   useEffect(() => {
-    // Plain fetch: a 401 here just means "not signed in", never a redirect.
-    fetch(`${API_URL}/auth/me`, { credentials: "include" })
-      .then((r) => setSignedIn(r.ok))
+    // Always answers 200 (no console noise for visitors) and counts a still-valid
+    // refresh cookie as signed in, so it stays right after the access token expires.
+    fetch(`${API_URL}/auth/session`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : { signed_in: false }))
+      .then((b: { signed_in: boolean }) => setSignedIn(b.signed_in))
       .catch(() => undefined);
   }, []);
   return signedIn ? (

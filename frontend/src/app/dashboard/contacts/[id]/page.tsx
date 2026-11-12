@@ -5,6 +5,7 @@ import { CalendarPlus, MessageCircle, Phone } from "lucide-react";
 import Link from "next/link";
 import { use, useState } from "react";
 import { AppointmentDialog } from "@/components/appointment-dialog";
+import { FormAssist } from "@/components/form-assist";
 import { Badge, Button, ErrorText, Field, Input, PageHeader, Select, Textarea } from "@/components/ui";
 import { api } from "@/lib/api";
 import { dateTime, day, KIND_LABEL, PROPERTY_TYPES, STAGES, waLink } from "@/lib/format";
@@ -143,6 +144,7 @@ function Preferences({
           });
         }}
       >
+        <FormAssist />
         <Field label="Name"><Input name="name" defaultValue={c.name ?? ""} /></Field>
         <div className="grid grid-cols-2 gap-2">
           <Field label="Budget from"><Input name="budget_min" type="number" defaultValue={c.budget_min ?? ""} /></Field>
@@ -201,6 +203,7 @@ function Tasks({ contactId, tasks, tz }: { contactId: string; tasks?: Task[]; tz
       <form className="flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); add.mutate(); }}>
         <Input placeholder="Send updated price sheet" value={title} onChange={(e) => setTitle(e.target.value)} required className="min-w-48 flex-1" />
         <Input type="datetime-local" value={due} onChange={(e) => setDue(e.target.value)} required className="w-auto" aria-label="Due" />
+        <FormAssist compact />
         <Button type="submit" variant="secondary" disabled={add.isPending}>Add follow-up</Button>
       </form>
     </section>
@@ -219,6 +222,7 @@ function Timeline({ contactId, activities, tz }: { contactId: string; activities
       <h2 className="mb-3 text-lg font-semibold">History</h2>
       <form className="mb-4 flex gap-2" onSubmit={(e) => { e.preventDefault(); add.mutate(); }}>
         <Input placeholder="Add a note about a call or meeting" value={note} onChange={(e) => setNote(e.target.value)} required className="flex-1" />
+        <FormAssist compact />
         <Button type="submit" variant="secondary" disabled={add.isPending}>Add note</Button>
       </form>
       <ol className="space-y-4 border-l-2 border-rule pl-4">

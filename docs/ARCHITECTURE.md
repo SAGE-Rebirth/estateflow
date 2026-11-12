@@ -17,7 +17,7 @@ leads and conversations.
 | Database | **MongoDB Atlas** (8.0): CRM data, document chunks with embeddings (**Atlas Vector Search**), multi-document **transactions** | One store for CRM records and vectors; transactions make double-booking impossible (§5) |
 | Queue / cron / locks | **Redis** + **arq** | Webhook returns 200 immediately; replies, ingestion and reminders run in a worker. Redis also holds rate-limit counters and per-sender locks |
 | WhatsApp | Meta **Cloud API** (Graph API), signed webhooks, one number per tenant | Cheapest route; supports templates, media and interactive replies |
-| AI | **Hugging Face Inference Providers** via `huggingface_hub`: chat with tool calling (Qwen3-235B), embeddings (all-MiniLM-L6-v2, 384 dims), speech-to-text (Whisper large-v3), image description (Qwen2.5-VL). Claude optional for chat | One account and bill for all AI; each model swappable by env var |
+| AI | **Google Gemini** via `google-genai`: chat with tool calling (`gemini-3.6-flash`), embeddings (`gemini-embedding-2`, 768 dims), speech-to-text and image description (`gemini-3.6-flash`). Claude optional for chat | One key and bill for all AI; each model swappable by env var |
 | LangChain | Text splitters in the ingestion pipeline | Robust chunking with overlap |
 | Scheduling | Built in-house: weekly hours + days off → free slots → appointments; the assistant books inside the chat | No third-party calendar; everything stays in the CRM |
 | Frontend | Next.js 15 (App Router) + Tailwind 4 + TanStack Query + FullCalendar | One app: buyer marketplace (server-rendered, SEO-friendly) at `/`, seller dashboard at `/dashboard` |
@@ -37,11 +37,11 @@ leads and conversations.
                          │ Redis lock per sender
                          │ tenant by phone_number_id → upsert contact → open conversation
                          │ insert message (unique wamid = idempotent)
-                         │ photo → vision model description · voice note → Whisper transcript
+                         │ photo → Gemini description · voice note → Gemini transcript
                          │ ref codes in the text → property interest
                          │ conversation in human mode → notify team, stop
                          ▼
-                   Assistant (HF chat model + tools)
+                   Assistant (Gemini chat model + tools)
                      search_properties · get_property_details · send_property_photos
                      search_knowledge (Atlas Vector Search) · get_available_slots
                      book_appointment · list_my_appointments · cancel_appointment
@@ -169,7 +169,7 @@ Business).
 | MongoDB | Your Atlas cluster, or the `mongo` container (Atlas Local: vector search + transactions) | MongoDB Atlas |
 | Redis | `redis` container | Managed Redis or the container |
 | API, worker, dashboard | `make dev` | Containers from `docker-compose.yml` (`app` profile) or any container host |
-| AI | Hugging Face Inference Providers (needs credits) | Same |
+| AI | Google Gemini API (needs credits or billing) | Same |
 | Tests | `make test`: Atlas Local + Redis in Docker, database `estateflow_test`, scripted model, fake WhatsApp, deterministic embedder | — |
 
 ## 8. Phases
@@ -184,7 +184,7 @@ Business).
    with gallery, map and WhatsApp contact, similar homes), per-seller listing page,
    booking page.
 4. **Hardening** ✅: cookie sessions, rate limiting, WhatsApp media in and out, eval
-   harness, move to MongoDB Atlas + Hugging Face.
+   harness, move to MongoDB Atlas + Gemini.
 5. **Next**: S3-compatible file storage, real-time notifications (SSE), Google Calendar
    sync, audit log, error tracking/tracing (Sentry/OpenTelemetry), per-tenant usage
    metering and billing, per-tenant data export.

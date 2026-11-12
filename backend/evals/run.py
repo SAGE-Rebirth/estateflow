@@ -176,7 +176,7 @@ async def main(argv: list[str] | None = None) -> int:
     s = get_settings()
     db = get_database()
     await ensure_indexes(db)
-    model = s.hf_llm_model if s.llm_provider == "huggingface" else s.anthropic_model
+    model = s.gemini_llm_model if s.llm_provider == "gemini" else s.anthropic_model
     report = Report(model=model, started=datetime.now(UTC).isoformat())
     scenarios = load_scenarios(args.scenario)
     try:

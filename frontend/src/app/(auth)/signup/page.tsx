@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button, ErrorText, Field, Input } from "@/components/ui";
+import { FormAssist } from "@/components/form-assist";
 import { api } from "@/lib/api";
 
 const slugify = (s: string) =>
@@ -44,6 +45,7 @@ export default function SignupPage() {
       <h1 className="text-2xl font-semibold">Create your business account</h1>
       <p className="mt-1 text-sm text-ink-soft">You&apos;ll be the owner. Add your team later.</p>
       <form onSubmit={onSubmit} className="mt-8 space-y-4">
+        <FormAssist />
         <Field label="Business name">
           <Input
             required value={business}

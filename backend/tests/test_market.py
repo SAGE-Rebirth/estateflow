@@ -83,6 +83,9 @@ async def test_listings_across_sellers_with_filters_and_sort(client, db):
 
     r = (await client.get(f"{API}/listings")).json()
     assert r["total"] == 4
+    # A published draft isn't reachable by URL either; a sold one keeps its page.
+    assert (await client.get(f"{API}/listings/acme/PR-1003")).status_code == 404
+    assert (await client.get(f"{API}/listings/acme/PR-1004")).status_code == 200
     assert {(i["slug"], i["ref_code"]) for i in r["items"]} == {
         ("acme", "PR-1001"),
         ("acme", "PR-1002"),

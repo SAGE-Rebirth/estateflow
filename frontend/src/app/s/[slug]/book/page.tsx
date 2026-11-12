@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { Button, ErrorText, Field, Input, Textarea } from "@/components/ui";
+import { FormAssist } from "@/components/form-assist";
 import { api } from "@/lib/api";
 import { day, time } from "@/lib/format";
 import type { Slot } from "@/lib/types";
@@ -95,6 +96,7 @@ function Booking() {
         </fieldset>
         <fieldset className="grid gap-4 sm:grid-cols-2">
           <legend className="mb-3 font-semibold">Your details</legend>
+          <div className="sm:col-span-2"><FormAssist /></div>
           <Field label="Name"><Input name="name" required autoComplete="name" /></Field>
           <Field label="WhatsApp number"><Input name="phone" required type="tel" autoComplete="tel" /></Field>
           <Field label="Email (optional)" className="sm:col-span-2"><Input name="email" type="email" autoComplete="email" /></Field>

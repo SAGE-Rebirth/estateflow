@@ -1,7 +1,7 @@
 [project]
 name = "estateflow-backend"
 version = "0.1.0"
-description = "Multi-tenant real estate CRM with a WhatsApp RAG agent (MongoDB + Hugging Face)"
+description = "Multi-tenant real estate CRM with a WhatsApp RAG agent (MongoDB + Gemini)"
 requires-python = ">=3.12,<3.14"
 dependencies = [
     "fastapi>=0.115",
@@ -17,14 +17,13 @@ dependencies = [
     "cryptography>=43",
     "python-multipart>=0.0.17",
     "pymongo>=4.13",
-    "huggingface_hub>=0.30",
-    "numpy>=1.26",
     "anthropic>=0.75",
     "langchain-text-splitters>=0.3",
     "pypdf>=5.1",
     "docx2txt>=0.8",
     "phonenumbers>=8.13",
     "structlog>=24.4",
+    "google-genai>=1.40",
 ]
 
 [dependency-groups]

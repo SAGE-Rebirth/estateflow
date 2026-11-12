@@ -55,9 +55,11 @@ export default function PropertyPage({ params }: { params: Promise<{ id: string 
                 <Button variant="secondary">View public page</Button>
               </a>
             )}
-            <Button variant="danger" onClick={() => confirm(`Delete ${p.ref_code}? This can't be undone.`) && remove.mutate()}>
-              Delete
-            </Button>
+            {me.data && me.data.user.role !== "agent" && (
+              <Button variant="danger" onClick={() => confirm(`Delete ${p.ref_code}? This can't be undone.`) && remove.mutate()}>
+                Delete
+              </Button>
+            )}
           </>
         }
       />

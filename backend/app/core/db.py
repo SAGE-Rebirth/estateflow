@@ -178,33 +178,46 @@ async def ensure_indexes(db: Db | None = None) -> None:
         await ensure_vector_index(db)
 
 
+def _vector_index_definition() -> dict[str, Any]:
+    return {
+        "fields": [
+            {
+                "type": "vector",
+                "path": "embedding",
+                "numDimensions": get_settings().embedding_dim,
+                "similarity": "cosine",
+            },
+            {"type": "filter", "path": "tenant_id"},
+            {"type": "filter", "path": "property_id"},
+            {"type": "filter", "path": "active"},
+        ]
+    }
+
+
 async def ensure_vector_index(db: Db) -> None:
+    """Create the Atlas vector index, or update it when EMBEDDING_DIM changed."""
     s = get_settings()
     chunks = coll(db, Chunk)
+    definition = _vector_index_definition()
     try:
         existing = [i async for i in await chunks.list_search_indexes(s.vector_index_name)]
         if existing:
+            current = existing[0].get("latestDefinition") or {}
+            dims = {f.get("numDimensions") for f in current.get("fields", [])} - {None}
+            if dims != {s.embedding_dim}:
+                await chunks.update_search_index(s.vector_index_name, definition)
+                log.warning(
+                    "vector_index_updated",
+                    index=s.vector_index_name,
+                    old_dims=sorted(dims),
+                    new_dims=s.embedding_dim,
+                    hint="run `make reindex` to re-embed existing chunks",
+                )
             return
         if s.chunks_collection not in await db.list_collection_names():
             await db.create_collection(s.chunks_collection)
         await chunks.create_search_index(
-            SearchIndexModel(
-                name=s.vector_index_name,
-                type="vectorSearch",
-                definition={
-                    "fields": [
-                        {
-                            "type": "vector",
-                            "path": "embedding",
-                            "numDimensions": s.embedding_dim,
-                            "similarity": "cosine",
-                        },
-                        {"type": "filter", "path": "tenant_id"},
-                        {"type": "filter", "path": "property_id"},
-                        {"type": "filter", "path": "active"},
-                    ]
-                },
-            )
+            SearchIndexModel(name=s.vector_index_name, type="vectorSearch", definition=definition)
         )
         log.info("vector_index_created", index=s.vector_index_name)
     except OperationFailure as exc:

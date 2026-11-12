@@ -4,7 +4,7 @@ import os
 import pytest
 from cryptography.fernet import Fernet
 
-# Tests never touch the real database or Hugging Face, whatever the root .env says.
+# Tests never touch the real database or Gemini, whatever the root .env says.
 os.environ.update(
     {
         "MONGO_URL": os.environ.get(
@@ -21,7 +21,7 @@ os.environ.update(
         "WHATSAPP_APP_SECRET": "test-secret",
         "WHATSAPP_VERIFY_TOKEN": "verify-me",
         "BOOKING_MIN_LEAD_MINUTES": "0",
-        "HUGGINGFACEHUB_API_TOKEN": "",
+        "GEMINI_API_KEY": "",
         "ANTHROPIC_API_KEY": "",
         "UPLOAD_DIR": os.path.join(os.path.dirname(__file__), ".uploads"),
     }

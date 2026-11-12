@@ -28,7 +28,7 @@ from app.models import (
     Tenant,
     utcnow,
 )
-from app.services import hf
+from app.services import gemini
 from app.services.agent.agent import run_agent
 from app.services.agent.tools import AgentContext, record_interest
 from app.services.llm.base import ChatProvider
@@ -147,12 +147,14 @@ async def _process_media(
     caption = (event.raw.get(event.type) or {}).get("caption")
 
     if event.type == "audio":
-        transcript = await hf.transcribe(data)
+        transcript = await gemini.transcribe(
+            data, mime if mime.startswith("audio/") else "audio/ogg"
+        )
         if transcript:
             msg.body = f"[voice note] {transcript}"
             msg.meta["transcript"] = transcript
     elif event.type == "image":
-        description = await hf.describe_image(data, mime)
+        description = await gemini.describe_image(data, mime)
         if description:
             msg.meta["description"] = description
             msg.body = f"[photo] {description}" + (f"\nCaption: {caption}" if caption else "")

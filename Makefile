@@ -71,8 +71,11 @@ web: ## Run the dashboard on http://localhost:3000
 seed: ## Load demo data (demo@estateflow.dev / demo12345) into the database in .env
 	$(UV) run python -m app.scripts.seed
 
-seed-no-embed: ## Load demo data without calling Hugging Face for embeddings
+seed-no-embed: ## Load demo data without calling Gemini for embeddings
 	$(UV) run python -m app.scripts.seed --no-embed
+
+reindex: ## Re-embed all listings and documents (after changing the embedding model/size)
+	$(UV) run python -m app.scripts.reindex
 
 # --- Quality -------------------------------------------------------------------------
 
@@ -93,7 +96,7 @@ typecheck: ## Type-check the frontend
 
 check: lint typecheck test ## Everything CI should run: lint, type-check, tests
 
-evals: ## Grade the assistant on buyer scenarios (uses Hugging Face credits)
+evals: ## Grade the assistant on buyer scenarios (uses Gemini quota)
 	$(UV) run python -m evals.run
 
 # --- Docker (everything in containers) -----------------------------------------------

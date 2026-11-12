@@ -37,6 +37,17 @@ h3 {
   font-variant-numeric: tabular-nums;
 }
 
+/* Voice fill / smart paste: the field being listened to, and fields just filled. */
+[data-voice-active] {
+  outline: 2px solid var(--color-brick);
+  outline-offset: 2px;
+}
+
+[data-autofilled] {
+  background-color: var(--color-marigold-tint);
+  transition: background-color 0.6s ease-out;
+}
+
 :focus-visible {
   outline: 2px solid var(--color-registry);
   outline-offset: 2px;

@@ -53,10 +53,17 @@ async def test_cookie_session_lifecycle(client):
     assert r.status_code == 200
     assert (await client.get(f"{API}/auth/me")).status_code == 200
 
+    # The public header's session check: always 200, and a refresh cookie alone counts.
+    assert (await client.get(f"{API}/auth/session")).json() == {"signed_in": True}
+    client.cookies.delete("ef_access")
+    assert (await client.get(f"{API}/auth/session")).json() == {"signed_in": True}
+
     # Logout clears the cookies.
     r = await client.post(f"{API}/auth/logout", headers={"Origin": ORIGIN})
     assert r.status_code == 204
     assert (await client.get(f"{API}/auth/me")).status_code == 401
+    r = await client.get(f"{API}/auth/session")
+    assert r.status_code == 200 and r.json() == {"signed_in": False}
 
 
 async def test_logout_everywhere_and_password_change_revoke_tokens(client, enqueued):
@@ -554,3 +561,94 @@ async def test_untrusted_media_types_download_instead_of_rendering(client, db):
     assert r.headers["content-disposition"].startswith("attachment")
     assert r.headers["x-content-type-options"] == "nosniff"
     assert "sandbox" in r.headers["content-security-policy"]
+
+
+async def test_website_booking_records_interest_only_for_published_listing(client, enqueued):
+    headers = await signup(client)
+    listing = {"listing_type": "sale", "property_type": "apartment"}
+    shown = (
+        await client.post(
+            f"{API}/properties",
+            headers=headers,
+            json={**listing, "title": "Shown", "published": True},
+        )
+    ).json()
+    hidden = (
+        await client.post(f"{API}/properties", headers=headers, json={**listing, "title": "Hidden"})
+    ).json()
+    slots = (await client.get(f"{API}/public/acme/slots?days=7")).json()
+    for slot, ref, phone in ((slots[0], shown, "98765 44444"), (slots[1], hidden, "98765 55555")):
+        r = await client.post(
+            f"{API}/public/acme/bookings",
+            json={
+                "name": "B",
+                "phone": phone,
+                "starts_at": slot["starts_at"],
+                "property_ref": ref["ref_code"],
+            },
+        )
+        assert r.status_code == 201, r.text
+    appts = (await client.get(f"{API}/appointments", headers=headers)).json()
+    contacts = {
+        c["phone"]: c
+        for c in (await client.get(f"{API}/contacts", headers=headers)).json()["items"]
+    }
+    seen = (
+        await client.get(
+            f"{API}/contacts/{contacts['+919876544444']['id']}/interests", headers=headers
+        )
+    ).json()
+    assert [i["ref_code"] for i in seen] == [shown["ref_code"]]
+    unseen = contacts["+919876555555"]
+    assert (
+        await client.get(f"{API}/contacts/{unseen['id']}/interests", headers=headers)
+    ).json() == []
+    # A guessed ref code of an unpublished listing doesn't get attached to the booking.
+    assert sorted(a["property_id"] or "" for a in appts) == sorted(["", shown["id"]])
+
+
+async def test_published_listing_from_api_is_live_by_default(client, enqueued):
+    headers = await signup(client)
+    body = {"title": "Sea view", "listing_type": "sale", "property_type": "apartment"}
+    prop = (
+        await client.post(f"{API}/properties", headers=headers, json={**body, "published": True})
+    ).json()
+    assert prop["status"] == "available"
+    items = (await client.get(f"{API}/market/listings")).json()["items"]
+    assert [i["ref_code"] for i in items] == [prop["ref_code"]]
+
+
+async def test_agents_cannot_delete_listings_or_contacts(client, enqueued):
+    owner = await signup(client)
+    await client.post(
+        f"{API}/users",
+        headers=owner,
+        json={"email": "agent@acme.example.com", "full_name": "Agent", "password": "password123"},
+    )
+    tok = (
+        await client.post(
+            f"{API}/auth/login",
+            headers={"X-Auth-Mode": "token"},
+            json={"email": "agent@acme.example.com", "password": "password123"},
+        )
+    ).json()["access_token"]
+    client.cookies.clear()
+    agent = {"Authorization": f"Bearer {tok}"}
+    prop = (
+        await client.post(
+            f"{API}/properties",
+            headers=owner,
+            json={"title": "Plot", "listing_type": "sale", "property_type": "plot"},
+        )
+    ).json()
+    contact = (
+        await client.post(f"{API}/contacts", headers=owner, json={"phone": "98765 66666"})
+    ).json()
+    assert (await client.delete(f"{API}/properties/{prop['id']}", headers=agent)).status_code == 403
+    assert (
+        await client.delete(f"{API}/contacts/{contact['id']}", headers=agent)
+    ).status_code == 403
+    assert (await client.delete(f"{API}/properties/{prop['id']}", headers=owner)).status_code == 204
+    assert (
+        await client.delete(f"{API}/contacts/{contact['id']}", headers=owner)
+    ).status_code == 204

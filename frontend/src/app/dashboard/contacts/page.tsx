@@ -5,6 +5,7 @@ import { Plus } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { Button, ErrorText, Field, Input, Modal, PageHeader, Select } from "@/components/ui";
+import { FormAssist } from "@/components/form-assist";
 import { api, qs } from "@/lib/api";
 import { ago, price, STAGES, stageLabel } from "@/lib/format";
 import { useMe, useTeam } from "@/lib/hooks";
@@ -145,6 +146,7 @@ function AddContact({ open, onClose }: { open: boolean; onClose: () => void }) {
           });
         }}
       >
+        <FormAssist paste="contact" />
         <Field label="Name"><Input name="name" /></Field>
         <Field label="Phone" hint="With country code, or a 10-digit Indian number"><Input name="phone" required /></Field>
         <Field label="Email"><Input name="email" type="email" /></Field>

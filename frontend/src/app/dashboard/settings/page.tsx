@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Documents } from "@/components/documents";
 import { Badge, Button, ErrorText, Field, Input, Modal, PageHeader, Select, Textarea } from "@/components/ui";
+import { FormAssist } from "@/components/form-assist";
 import { api, API_URL, qs, signOut } from "@/lib/api";
 import { day } from "@/lib/format";
 import { useMe, useTeam } from "@/lib/hooks";
@@ -187,6 +188,7 @@ function Assistant() {
         }}
       >
         <h2 className="text-lg font-semibold">How the assistant talks</h2>
+        <FormAssist />
         <Field label="Introduction" hint="Leave empty for the default: a helpful assistant for your business.">
           <Textarea name="persona" rows={3} defaultValue={s.persona} placeholder="You are Priya's assistant at Demo Realty. Warm, brief, never pushy." />
         </Field>
@@ -274,6 +276,7 @@ function Business() {
         list_on_marketplace: f.get("marketplace") === "on",
       });
     }}>
+      <FormAssist />
       <Field label="Business name"><Input name="name" defaultValue={t.name} required /></Field>
       <Field label="Contact email"><Input name="email" type="email" defaultValue={t.contact_email ?? ""} /></Field>
       <Field label="Time zone" hint="All booking times are shown in this zone">
@@ -338,6 +341,7 @@ function Team() {
           const f = new FormData(e.currentTarget);
           add.mutate({ full_name: f.get("name"), email: f.get("email"), phone: f.get("phone") || null, password: f.get("password"), role: f.get("role") });
         }}>
+          <FormAssist />
           <Field label="Name"><Input name="name" required /></Field>
           <Field label="Email"><Input name="email" type="email" required /></Field>
           <Field label="Phone"><Input name="phone" /></Field>

@@ -236,7 +236,7 @@ async def test_photo_is_stored_privately_and_described(
         assert data == b"\x89PNG fake" and mime == "image/png"
         return "Screenshot of listing PR-1001 showing price 95 lakh"
 
-    monkeypatch.setattr("app.services.hf.describe_image", describe)
+    monkeypatch.setattr("app.services.gemini.describe_image", describe)
     provider = ScriptedProvider([], reply="That's our Hebbal 3BHK!")
     await handle_inbound(
         db,
@@ -266,10 +266,11 @@ async def test_voice_note_is_transcribed(db, tenant_with_agent, whatsapp, monkey
     tenant, _ = tenant_with_agent
     whatsapp.media["v1"] = (b"OggS...", "audio/ogg; codecs=opus")
 
-    async def transcribe(data):
+    async def transcribe(data, mime):
+        assert mime == "audio/ogg"
         return "Do you have any villas in Whitefield?"
 
-    monkeypatch.setattr("app.services.hf.transcribe", transcribe)
+    monkeypatch.setattr("app.services.gemini.transcribe", transcribe)
     provider = ScriptedProvider([], reply="Yes!")
     await handle_inbound(
         db,

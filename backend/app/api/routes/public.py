@@ -14,6 +14,8 @@ from app.core.db import Db, coll, find, find_one, save
 from app.core.ratelimit import RateLimit, hit
 from app.models import (
     LISTABLE_STATUSES,
+    Contact,
+    Interest,
     LeadSource,
     ListingType,
     Property,
@@ -149,7 +151,12 @@ async def public_property(slug: str, ref_code: str, db: DbDep) -> PublicProperty
     prop = await find_one(
         db,
         Property,
-        {"tenant_id": tenant.id, "ref_code": ref_code.upper(), "published": True},
+        {
+            "tenant_id": tenant.id,
+            "ref_code": ref_code.upper(),
+            "published": True,
+            "status": {"$ne": PropertyStatus.draft},
+        },
     )
     if prop is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Listing not found")
@@ -196,7 +203,18 @@ async def public_booking(slug: str, body: PublicBookingIn, db: DbDep):
     prop = None
     if body.property_ref:
         prop = await find_one(
-            db, Property, {"tenant_id": tenant.id, "ref_code": body.property_ref.upper()}
+            db,
+            Property,
+            {"tenant_id": tenant.id, "ref_code": body.property_ref.upper(), "published": True},
+        )
+    if prop is not None:
+        # Same record the WhatsApp assistant keeps, so the CRM shows what they came for.
+        interest = Interest(
+            property_id=prop.id, ref_code=prop.ref_code, title=prop.title, source="website"
+        )
+        await coll(db, Contact).update_one(
+            {"_id": contact.id, "interests.property_id": {"$ne": prop.id}},
+            {"$push": {"interests": interest.model_dump()}},
         )
     try:
         appt = await book_appointment(

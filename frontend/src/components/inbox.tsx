@@ -10,6 +10,7 @@ import { ago, time } from "@/lib/format";
 import { useMe } from "@/lib/hooks";
 import type { ChatMessage, ConversationItem } from "@/lib/types";
 import { Button, ErrorText, Textarea } from "./ui";
+import { FormAssist } from "./form-assist";
 
 const FILTERS = [
   { key: "", label: "All open" },
@@ -117,7 +118,7 @@ function Thread({ id, conv }: { id: string; conv?: ConversationItem }) {
       <header className="flex flex-wrap items-center gap-3 border-b border-rule bg-paper px-4 py-3">
         <Link href="/dashboard/inbox" className="md:hidden" aria-label="Back to conversations"><ChevronLeft size={20} /></Link>
         <div className="min-w-0">
-          <Link href={conv ? `/contacts/${conv.contact_id}` : "#"} className="font-semibold hover:underline">
+          <Link href={conv ? `/dashboard/contacts/${conv.contact_id}` : "#"} className="font-semibold hover:underline">
             {conv?.contact_name ?? conv?.contact_phone ?? "Conversation"}
           </Link>
           <p className="text-xs text-ink-soft">
@@ -164,6 +165,7 @@ function Thread({ id, conv }: { id: string; conv?: ConversationItem }) {
               if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (body.trim()) send.mutate(); }
             }}
           />
+          <FormAssist compact />
           <Button type="submit" disabled={!body.trim() || send.isPending}>Send</Button>
         </div>
         <ErrorText error={send.error} />

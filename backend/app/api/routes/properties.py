@@ -3,7 +3,7 @@ import re
 from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile, status
 from pymongo.errors import DuplicateKeyError
 
-from app.api.deps import CurrentPrincipal, DbDep, get_owned
+from app.api.deps import AdminPrincipal, CurrentPrincipal, DbDep, get_owned
 from app.core.db import coll, find, insert, save
 from app.core.queue import enqueue
 from app.models import (
@@ -122,7 +122,7 @@ async def update_property(
 
 
 @router.delete("/properties/{property_id}", status_code=204)
-async def delete_property(property_id: str, p: CurrentPrincipal, db: DbDep) -> None:
+async def delete_property(property_id: str, p: AdminPrincipal, db: DbDep) -> None:
     prop = await get_owned(db, Property, property_id, p.tenant_id)
     for d in await find(db, Document, {"property_id": prop.id}):
         delete_file(d.storage_path)

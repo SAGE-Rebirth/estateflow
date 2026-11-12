@@ -1,9 +1,11 @@
-import asyncio
+import math
 from functools import lru_cache
-from typing import Protocol
+from typing import Any, Protocol
+
+from google.genai import types
 
 from app.core.config import get_settings
-from app.services.hf import hf_client
+from app.services.gemini import gemini_client
 
 
 class Embedder(Protocol):
@@ -11,33 +13,48 @@ class Embedder(Protocol):
     async def embed_query(self, text: str) -> list[float]: ...
 
 
-class HuggingFaceEmbedder:
-    """Sentence embeddings from the HF Inference API (feature-extraction pipeline)."""
+def _normalize(v: list[float]) -> list[float]:
+    norm = math.sqrt(sum(x * x for x in v)) or 1.0
+    return [x / norm for x in v]
 
-    CONCURRENCY = 8
 
-    def __init__(self) -> None:
+class GeminiEmbedder:
+    """Text embeddings from the Gemini API, truncated to `embedding_dim`."""
+
+    MAX_BATCH = 100  # API limit per request
+
+    def __init__(self, client: Any = None) -> None:
         s = get_settings()
-        self._model = s.hf_embedding_model
-        self._client = hf_client(s.hf_embedding_provider)
-        self._sem = asyncio.Semaphore(self.CONCURRENCY)
+        self._model = s.gemini_embedding_model
+        self._dim = s.embedding_dim
+        self._client = client or gemini_client()
 
-    async def _one(self, text: str) -> list[float]:
-        async with self._sem:
-            vec = await self._client.feature_extraction(text, model=self._model, normalize=True)
-        arr = vec.tolist() if hasattr(vec, "tolist") else vec
-        # Some models return [1, dim] (or token-level [1, n, dim]); reduce to one vector.
-        while isinstance(arr[0], list):
-            arr = arr[0] if len(arr) == 1 else [sum(c) / len(arr) for c in zip(*arr, strict=True)]
-        return [float(x) for x in arr]
+    async def _embed(self, texts: list[str], task: str) -> list[list[float]]:
+        out: list[list[float]] = []
+        for i in range(0, len(texts), self.MAX_BATCH):
+            batch = texts[i : i + self.MAX_BATCH]
+            response = await self._client.aio.models.embed_content(
+                model=self._model,
+                # One Content per text: a bare list of strings is embedded as ONE input.
+                contents=[types.Content(parts=[types.Part(text=t)]) for t in batch],
+                config=types.EmbedContentConfig(output_dimensionality=self._dim, task_type=task),
+            )
+            vectors = [list(e.values or []) for e in response.embeddings or []]
+            if len(vectors) != len(batch) or any(len(v) != self._dim for v in vectors):
+                raise RuntimeError(
+                    f"Embedding API returned {len(vectors)} vectors for {len(batch)} texts"
+                )
+            # Truncated (Matryoshka) vectors are not unit-length on every model.
+            out += [_normalize(v) for v in vectors]
+        return out
 
     async def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        return list(await asyncio.gather(*(self._one(t) for t in texts)))
+        return await self._embed(texts, "RETRIEVAL_DOCUMENT")
 
     async def embed_query(self, text: str) -> list[float]:
-        return await self._one(text)
+        return (await self._embed([text], "RETRIEVAL_QUERY"))[0]
 
 
 @lru_cache
 def get_embedder() -> Embedder:
-    return HuggingFaceEmbedder()
+    return GeminiEmbedder()

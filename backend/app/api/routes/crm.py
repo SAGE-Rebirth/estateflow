@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from fastapi.responses import FileResponse
 from pymongo.errors import DuplicateKeyError
 
-from app.api.deps import CurrentPrincipal, DbDep, get_owned
+from app.api.deps import AdminPrincipal, CurrentPrincipal, DbDep, get_owned
 from app.core.db import coll, find, find_one, insert, save
 from app.models import (
     Activity,
@@ -144,7 +144,7 @@ async def update_contact(
 
 
 @router.delete("/contacts/{contact_id}", status_code=204, tags=["contacts"])
-async def delete_contact(contact_id: str, p: CurrentPrincipal, db: DbDep) -> None:
+async def delete_contact(contact_id: str, p: AdminPrincipal, db: DbDep) -> None:
     contact = await get_owned(db, Contact, contact_id, p.tenant_id)
     convs = [c.id for c in await find(db, Conversation, {"contact_id": contact.id})]
     await coll(db, Message).delete_many({"conversation_id": {"$in": convs}})

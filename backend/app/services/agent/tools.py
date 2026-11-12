@@ -29,6 +29,7 @@ from app.models import (
     Tenant,
 )
 from app.services.llm.base import ToolError, ToolSpec
+from app.services.money import format_money
 from app.services.notifications import notify, recipients_for
 from app.services.rag.retriever import search_chunks
 from app.services.scheduling import (
@@ -163,7 +164,7 @@ class AgentContext:
 
 
 def _money(v: float | None, currency: str) -> str | None:
-    return f"{currency} {v:,.0f}" if v is not None else None
+    return format_money(v, currency) if v is not None else None
 
 
 def listing_url(tenant: Tenant, p: Property) -> str:
